@@ -14,7 +14,7 @@ final class RequestContext
     /** @var list<ServerRequestInterface> */
     private array $mainStack = [];
 
-    /** @var WeakMap<Fiber<mixed, mixed, mixed, mixed>, list<ServerRequestInterface>>|null */
+    /** @var WeakMap<object, list<ServerRequestInterface>>|null Fiber identity => request stack. */
     private ?WeakMap $fiberStacks = null;
 
     /**

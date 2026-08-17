@@ -7,10 +7,12 @@ use Componenta\Auth\App\Attribute\CurrentSessionId;
 use Componenta\Auth\App\ConfigProvider as AuthAppConfigProvider;
 use Componenta\Auth\App\Tests\Fixture\SessionFixture;
 use Componenta\Auth\Session\SessionInterface;
+use Componenta\Caster\ConfigProvider as CasterConfigProvider;
 use Componenta\Config\Config;
-use Componenta\Config\ConfigKey as BaseConfigKey;
+use Componenta\Config\ConfigProvider as BaseConfigProvider;
 use Componenta\DI\Attribute\MapRequestPayload;
 use Componenta\DI\ConfigKey;
+use Componenta\DI\ConfigProvider as DiConfigProvider;
 use Componenta\DI\Container;
 use Componenta\DI\ContainerBuilder;
 use Nyholm\Psr7\ServerRequest;
@@ -45,6 +47,20 @@ final readonly class CompiledMappedSessionConsumer
     ) {}
 }
 
+function authAppParityProvider(): BaseConfigProvider
+{
+    return new class () extends BaseConfigProvider {
+        protected function getProviders(): array
+        {
+            return [
+                new CasterConfigProvider(),
+                new DiConfigProvider(),
+                new AuthAppConfigProvider(),
+            ];
+        }
+    };
+}
+
 /**
  * @param list<class-string> $entries
  * @return array{0: Container, 1: Container, 2: string}
@@ -52,17 +68,17 @@ final readonly class CompiledMappedSessionConsumer
 function authAppParityContainers(array $entries): array
 {
     $directory = sys_get_temp_dir() . '/componenta-auth-app-parity-' . bin2hex(random_bytes(5));
-    $provider = new AuthAppConfigProvider();
-    $development = ContainerBuilder::configure(new Config($provider()))->build();
+    $configData = authAppParityProvider()();
+    $development = ContainerBuilder::configure(new Config($configData))->build();
 
-    $compiler = ContainerBuilder::configure(new Config($provider()));
+    $compiler = ContainerBuilder::configure(new Config($configData));
     $factories = $compiler->compileFactories($entries, $directory);
-
-    $dependencies = $provider()[BaseConfigKey::DEPENDENCIES] ?? [];
-    $dependencies[ConfigKey::FACTORIES] = [
-        ...($dependencies[ConfigKey::FACTORIES] ?? []),
-        ...$factories,
-    ];
+    $compiledConfig = $compiler->toArray();
+    $dependencies = $compiledConfig[ConfigKey::DEPENDENCIES] ?? [];
+    $dependencies[ConfigKey::FACTORIES] = array_replace(
+        $dependencies[ConfigKey::FACTORIES] ?? [],
+        $factories,
+    );
 
     $production = ContainerBuilder::configureFromCache(
         new Config([]),

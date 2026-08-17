@@ -24,7 +24,7 @@ final readonly class RevokeSessionCommand
 
 Both values are authoritative. Programmatic caller parameters cannot override them. During `Map*` request DTO mapping, fields named for `CurrentSession` or `CurrentSessionId` parameters are rejected with `RequestParameterSourceConflictException` instead of being treated as DI overrides. The resolver reads `SessionInterface::class` only from the trusted `ServerRequestInterface`; it never treats a cookie, header, token payload, or request field as the current server-side session.
 
-`componenta/di` 4.0.4 or newer preserves the trusted PSR-7 request for nested DTO construction and protects parameters whose attributes implement `ParameterSourceAttributeInterface` from mapped-source collisions. `CurrentSession` and `CurrentSessionId` implement that contract, so the same semantics apply inside commands and other DTOs created by `#[MapRequestPayload]`, `#[MapQueryString]`, and the other request mappers without any request-context state in this package.
+`componenta/di` 4.0.5 or newer preserves the trusted PSR-7 request for nested DTO construction and protects parameters whose attributes implement `ParameterSourceAttributeInterface` from mapped-source collisions. `CurrentSession` and `CurrentSessionId` implement that contract, so the same semantics apply inside commands and other DTOs created by `#[MapRequestPayload]`, `#[MapQueryString]`, and the other request mappers without any request-context state in this package.
 
 Nullable targets return `null` when a request exists but has no authenticated session:
 

@@ -22,7 +22,9 @@ final readonly class RevokeSessionCommand
 
 `#[CurrentSession]` injects the authenticated server-side session. `#[CurrentSessionId]` injects its `SessionInterface::$id`.
 
-Both values are authoritative: explicit caller arguments and mapped request data cannot override them. During `#[MapRequestPayload]` and other request DTO mapping, `auth-app` propagates the already trusted PSR-7 request into nested DTO construction, so the same rule also holds for constructor attributes inside mapped DTOs. The resolver reads `SessionInterface::class` only from the current `ServerRequestInterface`; it never trusts a raw cookie, header, token payload, or request field as a session identity.
+Both values are authoritative: caller-provided parameters and mapped request data cannot override them. The resolver reads `SessionInterface::class` only from the trusted `ServerRequestInterface`; it never treats a cookie, header, token payload, or request field as the current server-side session.
+
+`componenta/di` 4.0.3 or newer preserves the trusted PSR-7 request when a `Map*` request mapper constructs a nested DTO. As a result, the same `CurrentSession` and `CurrentSessionId` semantics apply inside commands and other DTOs created by `#[MapRequestPayload]`, `#[MapQueryString]`, and the other request mappers without any request-context state in this package.
 
 Nullable targets return `null` when a request exists but has no authenticated session:
 
@@ -30,6 +32,6 @@ Nullable targets return `null` when a request exists but has no authenticated se
 function endpoint(#[CurrentSessionId] ?string $sessionId): void {}
 ```
 
-A missing PSR-7 request is always a resolution error because the attributes are request-scoped.
+A missing PSR-7 request is always a resolution error because both attributes are request-scoped.
 
-The package registers its `ConfigProvider` through Composer metadata. No changes to `componenta/auth` or `componenta/di` are required.
+The package registers its `ConfigProvider` through Composer metadata. Its runtime integration consists only of the two attributes and `CurrentSessionResolver`; request propagation is owned by `componenta/di`.

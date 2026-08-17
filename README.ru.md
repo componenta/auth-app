@@ -22,7 +22,9 @@ final readonly class RevokeSessionCommand
 
 `#[CurrentSession]` внедряет текущую серверную сессию, а `#[CurrentSessionId]` — её `SessionInterface::$id`.
 
-Оба значения являются authoritative: явные аргументы вызывающего кода и данные, полученные через request mapping, не могут их подменить. Во время `#[MapRequestPayload]` и другого DTO mapping пакет `auth-app` передаёт уже доверенный PSR-7 request во вложенное создание DTO, поэтому то же правило действует и для атрибутов параметров конструктора mapped DTO. Resolver читает `SessionInterface::class` только из текущего `ServerRequestInterface` и не рассматривает cookie, header, token payload или поле запроса как доверенный идентификатор сессии.
+Оба значения являются доверенными: явно переданные параметры и данные request mapping не могут их подменить. Resolver читает `SessionInterface::class` только из доверенного `ServerRequestInterface` и никогда не рассматривает cookie, header, token payload или поле запроса как текущую серверную сессию.
+
+`componenta/di` версии 4.0.3 и выше сохраняет доверенный PSR-7 request, когда request mapper семейства `Map*` создаёт вложенный DTO. Поэтому те же правила `CurrentSession` и `CurrentSessionId` работают внутри команд и других DTO, создаваемых через `#[MapRequestPayload]`, `#[MapQueryString]` и остальные request mapper-ы, без какого-либо request-context state внутри этого пакета.
 
 Nullable-параметры получают `null`, если request существует, но аутентифицированной сессии нет:
 
@@ -30,6 +32,6 @@ Nullable-параметры получают `null`, если request сущес
 function endpoint(#[CurrentSessionId] ?string $sessionId): void {}
 ```
 
-Отсутствие самого PSR-7 request всегда является ошибкой разрешения, поскольку эти атрибуты имеют request-scoped семантику.
+Отсутствие самого PSR-7 request всегда является ошибкой разрешения, поскольку оба атрибута имеют request-scoped семантику.
 
-`ConfigProvider` регистрируется автоматически через Composer metadata. Изменения в `componenta/auth` и `componenta/di` не требуются.
+`ConfigProvider` регистрируется автоматически через Composer metadata. Runtime-интеграция пакета состоит только из двух атрибутов и `CurrentSessionResolver`; передача request во вложенные DTO является обязанностью `componenta/di`.

@@ -8,8 +8,7 @@
         "componenta/app": "^3.0.2",
         "componenta/auth": "^2.0.2",
         "componenta/config": "^2.0.2",
-        "componenta/di": "^4.0.2",
-        "psr/container": "^2.0",
+        "componenta/di": "^4.0.3",
         "psr/http-message": "^2.0"
     },
     "require-dev": {

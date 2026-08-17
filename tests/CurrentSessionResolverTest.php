@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Componenta\Auth\App\Attribute\CurrentSession;
 use Componenta\Auth\App\Attribute\CurrentSessionId;
 use Componenta\Auth\App\ConfigProvider as AuthAppConfigProvider;
+use Componenta\Auth\App\Tests\Fixture\SessionFixture;
 use Componenta\Auth\Session\SessionInterface;
 use Componenta\Caster\ConfigProvider as CasterConfigProvider;
 use Componenta\Config\Config;
@@ -13,8 +14,9 @@ use Componenta\DI\Attribute\MapRequestPayload;
 use Componenta\DI\ConfigProvider as DiConfigProvider;
 use Componenta\DI\Container;
 use Componenta\DI\ContainerBuilder;
+use Componenta\DI\Exception\RequestParameterSourceConflictException;
 use Componenta\DI\Exception\ResolutionException;
-use Componenta\Auth\App\Tests\Fixture\SessionFixture;
+use Componenta\DI\Resolver\Parameter\ParameterSourceAttributeInterface;
 use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -44,6 +46,11 @@ function authAppTestContainer(): Container
 
     return ContainerBuilder::configure(new Config($provider()))->build();
 }
+
+it('marks current-session attributes as explicit parameter sources', function (): void {
+    expect(is_a(CurrentSession::class, ParameterSourceAttributeInterface::class, true))->toBeTrue()
+        ->and(is_a(CurrentSessionId::class, ParameterSourceAttributeInterface::class, true))->toBeTrue();
+});
 
 it('injects the current authenticated session', function (): void {
     $session = SessionFixture::session();
@@ -143,29 +150,63 @@ it('does not let explicit parameters shadow trusted session values', function ()
         ]))->toBe($session);
 });
 
-it('does not let mapped request data shadow trusted session values', function (): void {
+it('rejects mapped request data that collides with CurrentSession', function (): void {
     $session = SessionFixture::session('trusted-session');
     $spoofedSession = SessionFixture::session('spoofed-session');
     $request = (new ServerRequest('POST', 'https://example.test/'))
         ->withAttribute(SessionInterface::class, $session)
         ->withParsedBody([
             'session' => $spoofedSession,
+            'value' => 'payload-value',
+        ]);
+    $container = authAppTestContainer();
+
+    try {
+        $container->call(
+            static fn(
+                #[MapRequestPayload]
+                AuthAppMappedCommand $command,
+            ): AuthAppMappedCommand => $command,
+            [ServerRequestInterface::class => $request],
+        );
+    } catch (RequestParameterSourceConflictException $exception) {
+        expect($exception->dtoClass)->toBe(AuthAppMappedCommand::class)
+            ->and($exception->key)->toBe('session')
+            ->and($exception->source)->toBe(CurrentSession::class);
+
+        return;
+    }
+
+    throw new \RuntimeException('Expected request parameter source conflict.');
+});
+
+it('rejects mapped request data that collides with CurrentSessionId', function (): void {
+    $session = SessionFixture::session('trusted-session');
+    $request = (new ServerRequest('POST', 'https://example.test/'))
+        ->withAttribute(SessionInterface::class, $session)
+        ->withParsedBody([
             'sessionId' => 'spoofed-session',
             'value' => 'payload-value',
         ]);
     $container = authAppTestContainer();
 
-    $command = $container->call(
-        static fn(
-            #[MapRequestPayload]
-            AuthAppMappedCommand $command,
-        ): AuthAppMappedCommand => $command,
-        [ServerRequestInterface::class => $request],
-    );
+    try {
+        $container->call(
+            static fn(
+                #[MapRequestPayload]
+                AuthAppMappedCommand $command,
+            ): AuthAppMappedCommand => $command,
+            [ServerRequestInterface::class => $request],
+        );
+    } catch (RequestParameterSourceConflictException $exception) {
+        expect($exception->dtoClass)->toBe(AuthAppMappedCommand::class)
+            ->and($exception->key)->toBe('sessionId')
+            ->and($exception->source)->toBe(CurrentSessionId::class);
 
-    expect($command->session)->toBe($session)
-        ->and($command->sessionId)->toBe('trusted-session')
-        ->and($command->value)->toBe('payload-value');
+        return;
+    }
+
+    throw new \RuntimeException('Expected request parameter source conflict.');
 });
 
 it('fails closed when the session request attribute has an invalid type', function (): void {

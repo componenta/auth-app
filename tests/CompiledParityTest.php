@@ -15,6 +15,7 @@ use Componenta\DI\ConfigKey;
 use Componenta\DI\ConfigProvider as DiConfigProvider;
 use Componenta\DI\Container;
 use Componenta\DI\ContainerBuilder;
+use Componenta\DI\Exception\RequestParameterSourceConflictException;
 use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -103,6 +104,28 @@ function cleanupAuthAppParityDirectory(string $directory): void
     }
 }
 
+/** @return array{class-string, class-string, string, class-string, string} */
+function authAppMappedSessionConflictSnapshot(
+    Container $container,
+    ServerRequestInterface $request,
+): array {
+    try {
+        $container->make(CompiledMappedSessionConsumer::class, [
+            ServerRequestInterface::class => $request,
+        ]);
+    } catch (RequestParameterSourceConflictException $exception) {
+        return [
+            $exception::class,
+            $exception->dtoClass,
+            $exception->key,
+            $exception->source,
+            $exception->getMessage(),
+        ];
+    }
+
+    throw new \RuntimeException('Expected request parameter source conflict.');
+}
+
 it('keeps direct current-session resolution identical in development and compiled production', function (): void {
     [$development, $production, $directory] = authAppParityContainers([
         CompiledCurrentSessionConsumer::class,
@@ -129,12 +152,9 @@ it('keeps mapped DTO session propagation identical in development and compiled p
         CompiledMappedSessionConsumer::class,
     ]);
     $session = SessionFixture::session('trusted-compiled-session');
-    $spoofed = SessionFixture::session('spoofed-compiled-session');
     $request = (new ServerRequest('POST', 'https://example.test/'))
         ->withAttribute(SessionInterface::class, $session)
         ->withParsedBody([
-            'session' => $spoofed,
-            'sessionId' => 'spoofed-compiled-session',
             'value' => 'payload-value',
         ]);
     $provided = [ServerRequestInterface::class => $request];
@@ -148,6 +168,28 @@ it('keeps mapped DTO session propagation identical in development and compiled p
             ->and($actual->command->sessionId)->toBe($expected->command->sessionId)
             ->and($actual->command->sessionId)->toBe('trusted-compiled-session')
             ->and($actual->command->value)->toBe('payload-value');
+    } finally {
+        cleanupAuthAppParityDirectory($directory);
+    }
+});
+
+it('keeps mapped session source conflicts identical in development and compiled production', function (): void {
+    [$development, $production, $directory] = authAppParityContainers([
+        CompiledMappedSessionConsumer::class,
+    ]);
+    $session = SessionFixture::session('trusted-compiled-session');
+    $request = (new ServerRequest('POST', 'https://example.test/'))
+        ->withAttribute(SessionInterface::class, $session)
+        ->withParsedBody([
+            'sessionId' => 'spoofed-compiled-session',
+            'value' => 'payload-value',
+        ]);
+
+    try {
+        expect(authAppMappedSessionConflictSnapshot($production, $request))
+            ->toBe(authAppMappedSessionConflictSnapshot($development, $request))
+            ->and(authAppMappedSessionConflictSnapshot($development, $request)[2])->toBe('sessionId')
+            ->and(authAppMappedSessionConflictSnapshot($development, $request)[3])->toBe(CurrentSessionId::class);
     } finally {
         cleanupAuthAppParityDirectory($directory);
     }

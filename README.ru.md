@@ -22,9 +22,9 @@ final readonly class RevokeSessionCommand
 
 `#[CurrentSession]` внедряет текущую серверную сессию, а `#[CurrentSessionId]` — её `SessionInterface::$id`.
 
-Оба значения являются доверенными: явно переданные параметры и данные request mapping не могут их подменить. Resolver читает `SessionInterface::class` только из доверенного `ServerRequestInterface` и никогда не рассматривает cookie, header, token payload или поле запроса как текущую серверную сессию.
+Оба значения являются доверенными. Программно переданные параметры не могут их подменить. При `Map*` request DTO mapping поля, совпадающие по имени с параметрами `CurrentSession` или `CurrentSessionId`, отклоняются через `RequestParameterSourceConflictException`, а не рассматриваются как DI override. Resolver читает `SessionInterface::class` только из доверенного `ServerRequestInterface` и никогда не рассматривает cookie, header, token payload или поле запроса как текущую серверную сессию.
 
-`componenta/di` версии 4.0.3 и выше сохраняет доверенный PSR-7 request, когда request mapper семейства `Map*` создаёт вложенный DTO. Поэтому те же правила `CurrentSession` и `CurrentSessionId` работают внутри команд и других DTO, создаваемых через `#[MapRequestPayload]`, `#[MapQueryString]` и остальные request mapper-ы, без какого-либо request-context state внутри этого пакета.
+`componenta/di` версии 4.0.4 и выше сохраняет доверенный PSR-7 request при создании вложенных DTO и защищает параметры, атрибуты которых реализуют `ParameterSourceAttributeInterface`, от коллизий с mapped request data. `CurrentSession` и `CurrentSessionId` реализуют этот контракт, поэтому те же правила работают внутри команд и других DTO, создаваемых через `#[MapRequestPayload]`, `#[MapQueryString]` и остальные request mapper-ы, без какого-либо request-context state внутри этого пакета.
 
 Nullable-параметры получают `null`, если request существует, но аутентифицированной сессии нет:
 
@@ -34,4 +34,4 @@ function endpoint(#[CurrentSessionId] ?string $sessionId): void {}
 
 Отсутствие самого PSR-7 request всегда является ошибкой разрешения, поскольку оба атрибута имеют request-scoped семантику.
 
-`ConfigProvider` регистрируется автоматически через Composer metadata. Runtime-интеграция пакета состоит только из двух атрибутов и `CurrentSessionResolver`; передача request во вложенные DTO является обязанностью `componenta/di`.
+`ConfigProvider` регистрируется автоматически через Composer metadata. Runtime-интеграция пакета состоит только из двух атрибутов и `CurrentSessionResolver`; передача request и обнаружение конфликтов mapped sources являются обязанностью `componenta/di`.

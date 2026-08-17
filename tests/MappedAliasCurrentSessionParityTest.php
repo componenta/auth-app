@@ -67,12 +67,8 @@ function mappedAliasSessionContainers(): array
     $suffix = bin2hex(random_bytes(5));
     $directory = sys_get_temp_dir() . '/componenta-auth-app-mapped-alias-' . $suffix;
     $namespace = 'Componenta\\Auth\\App\\Tests\\Generated\\MappedAlias' . $suffix;
-    $configData = mappedAliasSessionProvider()();
-    $configData[ConfigKey::DEPENDENCIES][ConfigKey::ALIASES][MappedAliasSessionCommandContract::class]
-        = MappedAliasSessionCommand::class;
-
-    $development = ContainerBuilder::configure(new Config($configData))->build();
-    $compiler = ContainerBuilder::configure(new Config($configData));
+    $development = mappedAliasSessionBuilder()->build();
+    $compiler = mappedAliasSessionBuilder();
     $factories = $compiler->compileFactories(
         [MappedAliasSessionEntry::class, MappedAliasSessionCommand::class],
         $directory,

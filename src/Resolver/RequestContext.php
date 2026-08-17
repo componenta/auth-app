@@ -14,7 +14,7 @@ final class RequestContext
     /** @var list<ServerRequestInterface> */
     private array $mainStack = [];
 
-    /** @var WeakMap<Fiber, list<ServerRequestInterface>>|null */
+    /** @var WeakMap<Fiber<mixed, mixed, mixed, mixed>, list<ServerRequestInterface>>|null */
     private ?WeakMap $fiberStacks = null;
 
     /**
@@ -37,14 +37,14 @@ final class RequestContext
         }
 
         $stacks = $this->fiberStacks ??= new WeakMap();
-        $stack = $stacks[$fiber] ?? [];
+        $stack = isset($stacks[$fiber]) ? $stacks[$fiber] : [];
         $stack[] = $request;
         $stacks[$fiber] = $stack;
 
         try {
             return $callback();
         } finally {
-            $stack = $stacks[$fiber] ?? [];
+            $stack = $stacks[$fiber];
             array_pop($stack);
 
             if ($stack === []) {

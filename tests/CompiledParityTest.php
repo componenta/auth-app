@@ -68,12 +68,18 @@ function authAppParityProvider(): BaseConfigProvider
  */
 function authAppParityContainers(array $entries): array
 {
-    $directory = sys_get_temp_dir() . '/componenta-auth-app-parity-' . bin2hex(random_bytes(5));
+    $suffix = bin2hex(random_bytes(5));
+    $directory = sys_get_temp_dir() . '/componenta-auth-app-parity-' . $suffix;
+    $namespace = 'Componenta\\Auth\\App\\Tests\\Generated\\Parity' . $suffix;
     $configData = authAppParityProvider()();
     $development = ContainerBuilder::configure(new Config($configData))->build();
 
     $compiler = ContainerBuilder::configure(new Config($configData));
-    $factories = $compiler->compileFactories($entries, $directory);
+    $factories = $compiler->compileFactories(
+        $entries,
+        $directory,
+        namespace: $namespace,
+    );
     $compiledConfig = $compiler->toArray();
     $dependencies = $compiledConfig[ConfigKey::DEPENDENCIES] ?? [];
     $dependencies[ConfigKey::FACTORIES] = array_replace(
@@ -186,10 +192,12 @@ it('keeps mapped session source conflicts identical in development and compiled 
         ]);
 
     try {
-        expect(authAppMappedSessionConflictSnapshot($production, $request))
-            ->toBe(authAppMappedSessionConflictSnapshot($development, $request))
-            ->and(authAppMappedSessionConflictSnapshot($development, $request)[2])->toBe('sessionId')
-            ->and(authAppMappedSessionConflictSnapshot($development, $request)[3])->toBe(CurrentSessionId::class);
+        $expected = authAppMappedSessionConflictSnapshot($development, $request);
+        $actual = authAppMappedSessionConflictSnapshot($production, $request);
+
+        expect($actual)->toBe($expected)
+            ->and($actual[2])->toBe('sessionId')
+            ->and($actual[3])->toBe(CurrentSessionId::class);
     } finally {
         cleanupAuthAppParityDirectory($directory);
     }

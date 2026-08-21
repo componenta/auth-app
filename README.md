@@ -7,7 +7,7 @@ Authentication-context integration for `componenta/auth` and `componenta/di` v5.
 ## Requirements
 
 - PHP 8.4+;
-- `componenta/auth` 2.x;
+- `componenta/auth` 2.0.3+;
 - `componenta/config` 3.x;
 - `componenta/di` 5.x.
 

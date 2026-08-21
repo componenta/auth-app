@@ -62,13 +62,13 @@ final class Service
 
 Такой код невалиден. Текущее состояние аутентификации принадлежит активному callable execution и не должно фиксироваться в состоянии объекта, который способен пережить request.
 
-Команды и DTO, которые несут actor, должны получать его на своей integration/mapping boundary, а не через constructor `#[CurrentUser]`. В частности, CQRS mapping для `ActorAwareInterface` самостоятельно назначает аутентифицированного actor новой message.
+Команды и DTO, которые несут actor, должны получать его на integration/mapping boundary, создающей новую message, а не через constructor `#[CurrentUser]`. Сам `auth-app` не заполняет `ActorAwareInterface`; CQRS/request integration, которой принадлежит actor mapping, должна использовать тот же request attribute `IdentityInterface::class` как источник аутентифицированного пользователя.
 
 ## Интеграция с DI v5
 
 `ConfigProvider` регистрирует `CurrentUser`, `CurrentSession` и `CurrentSessionId` как attribute definitions. Отдельного parameter-resolver priority и provider service для authentication context больше нет.
 
-Runtime reflection и AOT preparation используют один composed attribute plan. Тесты проверяют одинаковое callable resolution в development и compiled container, а также одинаковый отказ для invocation-only constructor usage.
+Runtime reflection и AOT preparation используют один composed attribute plan. Тесты покрывают callable resolution в development и compiled container, одинаковый отказ для invocation-only constructor usage и реальный persistent DI-cache round trip для authentication attribute definitions.
 
 ## Разработка
 

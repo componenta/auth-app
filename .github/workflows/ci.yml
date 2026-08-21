@@ -28,6 +28,13 @@ jobs:
           ref: main
           path: .ci/config
 
+      - name: Checkout validation workspace
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: componenta/validation
+          ref: main
+          path: .ci/validation
+
       - name: Checkout DI v5 workspace
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -55,6 +62,7 @@ jobs:
       - name: Use Componenta source workspaces
         run: |
           composer config repositories.componenta-config '{"type":"path","url":".ci/config","options":{"symlink":false,"versions":{"componenta/config":"3.0.0"}}}'
+          composer config repositories.componenta-validation '{"type":"path","url":".ci/validation","options":{"symlink":false,"versions":{"componenta/validation":"2.0.1"}}}'
           composer config repositories.componenta-di '{"type":"path","url":".ci/di","options":{"symlink":false,"versions":{"componenta/di":"5.0.0"}}}'
           composer config repositories.componenta-auth '{"type":"path","url":".ci/auth","options":{"symlink":false,"versions":{"componenta/auth":"2.0.3"}}}'
 

@@ -62,13 +62,13 @@ final class Service
 
 The example above is invalid. Current authentication state belongs to the active callable execution and must not be captured in object state that can outlive the request.
 
-Commands or DTOs that carry an actor should receive it through their integration/mapping boundary rather than constructor `#[CurrentUser]` injection. In particular, CQRS `ActorAwareInterface` mapping remains responsible for assigning the authenticated actor to a fresh message.
+Commands or DTOs that carry an actor should receive it through the integration/mapping boundary that constructs the fresh message rather than through constructor `#[CurrentUser]` injection. `auth-app` itself does not populate `ActorAwareInterface`; a CQRS/request integration that owns actor mapping should use the same authenticated `IdentityInterface::class` request attribute as its source.
 
 ## DI v5 integration
 
 `ConfigProvider` registers `CurrentUser`, `CurrentSession` and `CurrentSessionId` as attribute definitions. There is no custom parameter-resolver priority and no authentication-context provider service.
 
-The same composed attribute plan is used by runtime reflection and AOT preparation. The package tests callable resolution against both development and compiled containers and verifies that invocation-only constructor usage fails identically.
+The same composed attribute plan is used by runtime reflection and AOT preparation. Tests cover callable resolution in development and compiled containers, invocation-only constructor rejection, and a real persistent DI-cache round trip for the authentication attribute definitions.
 
 ## Development
 

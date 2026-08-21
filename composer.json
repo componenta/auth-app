@@ -1,14 +1,14 @@
 {
     "name": "componenta/auth-app",
-    "description": "Componenta application integration for authentication-aware dependency injection",
+    "description": "Authentication context integration for Componenta DI v5",
     "type": "library",
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "componenta/app": "^3.0.2",
         "componenta/auth": "^2.0.2",
-        "componenta/config": "^2.0.2",
-        "componenta/di": "^4.0.8",
+        "componenta/config": "^3.0",
+        "componenta/di": "^5.0",
+        "componenta/identity": "^1.0",
         "psr/http-message": "^2.0"
     },
     "require-dev": {

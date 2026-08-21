@@ -1,37 +1,77 @@
 # componenta/auth-app
 
-Интеграционный пакет между `componenta/auth` и `componenta/di`.
+Интеграция authentication context между `componenta/auth` и `componenta/di` v5.
 
-Пакет предоставляет доверенные атрибуты параметров, источником которых является аутентифицированный `SessionInterface`, уже помещённый в текущий PSR-7 request:
+Единственный источник текущего состояния аутентификации — `AuthenticationMiddleware` из `componenta/auth`. После успешной аутентификации middleware помещает `IdentityInterface` в текущий PSR-7 request по ключу `IdentityInterface::class`, а при наличии серверной сессии — `SessionInterface` по ключу `SessionInterface::class`. Этот пакет читает значения непосредственно из request; отдельного current-user provider, Fiber-local storage, request-global singleton или второго auth-context нет.
+
+## Требования
+
+- PHP 8.4+;
+- `componenta/auth` 2.x;
+- `componenta/config` 3.x;
+- `componenta/di` 5.x.
+
+## Контекстные атрибуты
+
+Пакет предоставляет три атрибута параметров:
 
 ```php
 use Componenta\Auth\App\Attribute\CurrentSession;
 use Componenta\Auth\App\Attribute\CurrentSessionId;
+use Componenta\Auth\App\Attribute\CurrentUser;
 use Componenta\Auth\Session\SessionInterface;
+use Componenta\Identity\IdentityInterface;
 
-final readonly class RevokeSessionCommand
+public function __invoke(
+    #[CurrentUser] IdentityInterface $user,
+    #[CurrentSession] ?SessionInterface $session,
+    #[CurrentSessionId] ?string $sessionId,
+): ResponseInterface {
+    // ...
+}
+```
+
+`#[CurrentUser]` читает `IdentityInterface::class` из текущего request. При необходимости можно потребовать конкретный тип identity приложения:
+
+```php
+public function __invoke(
+    #[CurrentUser(AppUser::class)] IdentityInterface $user,
+): ResponseInterface {
+    // ...
+}
+```
+
+`#[CurrentSession]` читает `SessionInterface::class`, а `#[CurrentSessionId]` возвращает `id` этой сессии.
+
+Если PSR-7 request отсутствует, resolution всегда завершается ошибкой. Если request есть, но пользователь или сессия не аутентифицированы, nullable-параметр получает `null`, а обязательный параметр завершается явной ошибкой. Неверный тип auth-атрибута в request отклоняется fail-closed.
+
+## Invocation-only семантика
+
+Все три атрибута регистрируются через DI v5 `AttributeDefinition` с capabilities `AuthoritativeValueProvider` и `InvocationOnlyValueProvider`.
+
+Они authoritative: generic caller parameters не могут подменить значения, установленные authentication middleware. Они также invocation-only: использование в constructor parameter отклоняется во время композиции attribute plan.
+
+```php
+final class Service
 {
     public function __construct(
-        #[CurrentSession]
-        public SessionInterface $session,
-        #[CurrentSessionId]
-        public string $sessionId,
+        #[CurrentUser] IdentityInterface $user,
     ) {}
 }
 ```
 
-`#[CurrentSession]` внедряет текущую серверную сессию, а `#[CurrentSessionId]` — её `SessionInterface::$id`.
+Такой код невалиден. Текущее состояние аутентификации принадлежит активному callable execution и не должно фиксироваться в состоянии объекта, который способен пережить request.
 
-Оба значения являются доверенными. Программно переданные параметры не могут их подменить. При `Map*` request DTO mapping поля, совпадающие по имени с параметрами `CurrentSession` или `CurrentSessionId`, отклоняются через `RequestParameterSourceConflictException`, а не рассматриваются как DI override. Resolver читает `SessionInterface::class` только из доверенного `ServerRequestInterface` и никогда не рассматривает cookie, header, token payload или поле запроса как текущую серверную сессию.
+Команды и DTO, которые несут actor, должны получать его на своей integration/mapping boundary, а не через constructor `#[CurrentUser]`. В частности, CQRS mapping для `ActorAwareInterface` самостоятельно назначает аутентифицированного actor новой message.
 
-`componenta/di` версии 4.0.8 и выше сохраняет provenance mapped request при вложенном factory resolution, прохождении alias и compiled factories и проверяет параметры, атрибуты которых реализуют `ParameterSourceAttributeInterface`, до учёта priority parameter resolvers. `CurrentSession` и `CurrentSessionId` реализуют этот контракт, поэтому те же fail-closed правила действуют внутри DTO, создаваемых через `#[MapRequestPayload]`, `#[MapQueryString]` и остальные request mapper-ы, в том числе когда объявленный mapper type через alias разрешается в конкретную команду. Runtime и compiled production используют одну и ту же границу без request-context state внутри этого пакета.
+## Интеграция с DI v5
 
-Nullable-параметры получают `null`, если request существует, но аутентифицированной сессии нет:
+`ConfigProvider` регистрирует `CurrentUser`, `CurrentSession` и `CurrentSessionId` как attribute definitions. Отдельного parameter-resolver priority и provider service для authentication context больше нет.
 
-```php
-function endpoint(#[CurrentSessionId] ?string $sessionId): void {}
+Runtime reflection и AOT preparation используют один composed attribute plan. Тесты проверяют одинаковое callable resolution в development и compiled container, а также одинаковый отказ для invocation-only constructor usage.
+
+## Разработка
+
+```bash
+composer check
 ```
-
-Отсутствие самого PSR-7 request всегда является ошибкой разрешения, поскольку оба атрибута имеют request-scoped семантику.
-
-`ConfigProvider` регистрируется автоматически через Composer metadata. Runtime-интеграция пакета состоит только из двух атрибутов и `CurrentSessionResolver`; передача request и обнаружение конфликтов mapped sources являются обязанностью `componenta/di`.

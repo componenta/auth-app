@@ -40,8 +40,8 @@ it('preserves authentication attribute semantics through the persistent DI cache
         )->build();
 
         $user = SessionFixture::identity();
-        $session = SessionFixture::session($user);
-        $request = SessionFixture::request($user, $session);
+        $session = SessionFixture::session();
+        $request = SessionFixture::request($session, $user);
 
         $resolved = $container->call(
             static fn(

@@ -6,9 +6,10 @@ use Attribute;
 use Componenta\Auth\App\Attribute\CurrentUser;
 use Componenta\Auth\App\ConfigProvider as AuthAppConfigProvider;
 use Componenta\Auth\App\Tests\Fixture\IdentityFixture;
-use Componenta\Config\Config;
+use Componenta\Config\ConfigFactory;
+use Componenta\Config\Environment;
 use Componenta\DI\Container;
-use Componenta\DI\ContainerBuilder;
+use Componenta\DI\ContainerFactory;
 use Componenta\DI\Exception\AttributeCompositionException;
 use Componenta\DI\Exception\ResolutionException;
 use Componenta\DI\Resolver\Parameter\ParameterSourceAttributeInterface;
@@ -18,9 +19,15 @@ use Psr\Http\Message\ServerRequestInterface;
 
 function authAppTestContainer(): Container
 {
-    return ContainerBuilder::configure(
-        new Config((new AuthAppConfigProvider())()),
-    )->build();
+    $composition = (new ConfigFactory())->create(
+        new Environment([]),
+        new AuthAppConfigProvider(),
+    );
+
+    return (new ContainerFactory())->create(
+        $composition->config,
+        $composition->dependencies,
+    )->container;
 }
 
 it('declares CurrentUser as an invocation-only parameter source', function (): void {

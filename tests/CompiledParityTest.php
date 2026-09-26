@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-use Componenta\Auth\App\Attribute\CurrentSessionId;
 use Componenta\Auth\App\Attribute\CurrentUser;
 use Componenta\Auth\App\ConfigProvider as AuthAppConfigProvider;
-use Componenta\Auth\App\Tests\Fixture\SessionFixture;
+use Componenta\Auth\App\Tests\Fixture\IdentityFixture;
 use Componenta\Config\Config;
 use Componenta\DI\ConfigKey;
 use Componenta\DI\Container;
@@ -18,9 +17,8 @@ final readonly class CompiledAuthenticationEndpoint
 {
     public function __invoke(
         #[CurrentUser] IdentityInterface $user,
-        #[CurrentSessionId] string $sessionId,
-    ): array {
-        return [$user, $sessionId];
+    ): IdentityInterface {
+        return $user;
     }
 }
 
@@ -75,11 +73,12 @@ function cleanupAuthAppParityDirectory(string $directory): void
     }
 }
 
-it('keeps authentication context invocation identical in development and compiled production', function (): void {
+it('keeps CurrentUser invocation identical in development and compiled production', function (): void {
     [$development, $production, $directory] = authAppParityContainers();
-    $user = SessionFixture::identity();
-    $request = SessionFixture::request(SessionFixture::session('compiled-session'), $user);
-    $provided = [ServerRequestInterface::class => $request];
+    $user = IdentityFixture::create();
+    $provided = [
+        ServerRequestInterface::class => IdentityFixture::request($user),
+    ];
 
     try {
         $devEndpoint = $development->make(CompiledAuthenticationEndpoint::class);
@@ -89,7 +88,7 @@ it('keeps authentication context invocation identical in development and compile
         $actual = $production->call($prodEndpoint, $provided);
 
         expect($actual)->toBe($expected)
-            ->and($actual)->toBe([$user, 'compiled-session']);
+            ->and($actual)->toBe($user);
     } finally {
         cleanupAuthAppParityDirectory($directory);
     }

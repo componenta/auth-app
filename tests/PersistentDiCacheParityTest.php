@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Componenta\Auth\App\Tests;
 
-use Componenta\Auth\App\Attribute\CurrentSessionId;
 use Componenta\Auth\App\Attribute\CurrentUser;
 use Componenta\Auth\App\ConfigProvider;
-use Componenta\Auth\App\Tests\Fixture\SessionFixture;
+use Componenta\Auth\App\Tests\Fixture\IdentityFixture;
 use Componenta\Config\Config;
 use Componenta\Config\ConfigKey;
 use Componenta\DI\Cache\DiCacheGenerator;
@@ -15,7 +14,7 @@ use Componenta\DI\ContainerBuilder;
 use Componenta\Identity\IdentityInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-it('preserves authentication attribute semantics through the persistent DI cache', function (): void {
+it('preserves CurrentUser semantics through the persistent DI cache', function (): void {
     $provider = new ConfigProvider();
     $provided = $provider();
     $dependencies = $provided[ConfigKey::DEPENDENCIES] ?? [];
@@ -39,20 +38,17 @@ it('preserves authentication attribute semantics through the persistent DI cache
             dirname($path),
         )->build();
 
-        $user = SessionFixture::identity();
-        $session = SessionFixture::session();
-        $request = SessionFixture::request($session, $user);
+        $user = IdentityFixture::create();
+        $request = IdentityFixture::request($user);
 
         $resolved = $container->call(
             static fn(
                 #[CurrentUser] IdentityInterface $currentUser,
-                #[CurrentSessionId] string $sessionId,
-            ): array => [$currentUser, $sessionId],
+            ): IdentityInterface => $currentUser,
             [ServerRequestInterface::class => $request],
         );
 
-        expect($resolved[0])->toBe($user)
-            ->and($resolved[1])->toBe($session->id);
+        expect($resolved)->toBe($user);
     } finally {
         @unlink($path);
     }

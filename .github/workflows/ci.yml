@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, auth-3]
   pull_request:
   workflow_dispatch:
 
@@ -64,7 +64,7 @@ jobs:
           composer config repositories.componenta-config '{"type":"path","url":".ci/config","options":{"symlink":false,"versions":{"componenta/config":"3.0.0"}}}'
           composer config repositories.componenta-validation '{"type":"path","url":".ci/validation","options":{"symlink":false,"versions":{"componenta/validation":"2.0.1"}}}'
           composer config repositories.componenta-di '{"type":"path","url":".ci/di","options":{"symlink":false,"versions":{"componenta/di":"5.0.0"}}}'
-          composer config repositories.componenta-auth '{"type":"path","url":".ci/auth","options":{"symlink":false,"versions":{"componenta/auth":"2.0.3"}}}'
+          composer config repositories.componenta-auth '{"type":"path","url":".ci/auth","options":{"symlink":false,"versions":{"componenta/auth":"3.0.x-dev"}}}'
 
       - name: Install dependencies
         run: composer update --no-interaction --no-progress --prefer-dist

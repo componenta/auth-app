@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Attribute;
 use Componenta\Auth\App\Attribute\CurrentUser;
 use Componenta\Auth\App\ConfigProvider as AuthAppConfigProvider;
 use Componenta\Auth\App\Tests\Fixture\IdentityFixture;

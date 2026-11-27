@@ -1,17 +1,17 @@
 # componenta/auth-app
 
-Invocation-only authenticated-identity integration between Componenta Auth 3 and Componenta DI v5.
+Invocation-only authenticated-identity integration between Componenta Auth 4 and Componenta DI 6.
 
 The current PSR-7 request is the only source of the authenticated identity. This package does not keep Fiber-local, request-global or container-retained authentication state.
 
-Authentication sessions are intentionally not part of this package. `#[CurrentSession]` belongs to `componenta/auth-session-app`; Auth 3 has no separate `#[CurrentSessionId]` attribute because the public session UUID is available from the current `AuthSession` itself.
+Authentication sessions are intentionally not part of this package. `#[CurrentSession]` belongs to `componenta/auth-session-app`; There is no separate `#[CurrentSessionId]` attribute because the public session UUID is available from the current `AuthSession` itself.
 
 ## Requirements
 
-- PHP 8.4+;
-- `componenta/auth` 3.x;
-- `componenta/config` 3.x;
-- `componenta/di` 5.x;
+- PHP 8.5.13+;
+- `componenta/auth` 4.x;
+- `componenta/config` 4.x;
+- `componenta/di` 6.x;
 - PSR-7 2.x.
 
 ## CurrentUser
@@ -41,7 +41,7 @@ A missing PSR-7 request is always a resolution error. If the request exists but 
 
 ## Invocation-only semantics
 
-`CurrentUser` is registered through the DI v5 `AttributeDefinition` pipeline with `AuthoritativeValueProvider` and `InvocationOnlyValueProvider`.
+`CurrentUser` is registered through the DI 6 `AttributeDefinition` pipeline with `AuthoritativeValueProvider` and `InvocationOnlyValueProvider`.
 
 Generic caller parameters cannot shadow the authenticated identity, and constructor injection is rejected. Current authentication state belongs to one callable invocation and must not be retained in an object that may outlive the request.
 

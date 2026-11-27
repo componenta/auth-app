@@ -1,17 +1,17 @@
 # componenta/auth-app
 
-Invocation-only интеграция аутентифицированной identity между Componenta Auth 3 и Componenta DI v5.
+Передача текущего пользователя в параметры вызываемой функции через Componenta Auth 4 и Componenta DI 6.
 
-Единственный источник текущего пользователя — текущий PSR-7 request. Пакет не хранит Fiber-local, request-global или удерживаемое контейнером состояние аутентификации.
+Единственный источник текущего пользователя — запрос PSR-7. Пакет не сохраняет состояние аутентификации в контейнере, глобальных переменных или локальных данных фибры.
 
-Сессии намеренно вынесены из этого пакета. `#[CurrentSession]` принадлежит будущему `componenta/auth-session-app`; отдельного `#[CurrentSessionId]` в Auth 3 нет, потому что публичный UUID доступен непосредственно из текущего `AuthSession`.
+Сессии предоставляет отдельный пакет `componenta/auth-session-app` через атрибут `#[CurrentSession]`. Отдельный `#[CurrentSessionId]` не нужен: публичный UUID доступен непосредственно из текущего `AuthSession`.
 
 ## Требования
 
-- PHP 8.4+;
-- `componenta/auth` 3.x;
-- `componenta/config` 3.x;
-- `componenta/di` 5.x;
+- PHP 8.5.13+;
+- `componenta/auth` 4.x;
+- `componenta/config` 4.x;
+- `componenta/di` 6.x;
 - PSR-7 2.x.
 
 ## CurrentUser
@@ -27,7 +27,7 @@ public function __invoke(
 }
 ```
 
-`#[CurrentUser]` читает `IdentityInterface::class` непосредственно из текущего request. При необходимости приложение может потребовать свой subtype identity:
+`#[CurrentUser]` читает атрибут `IdentityInterface::class` непосредственно из текущего запроса. Приложение может потребовать конкретный тип пользователя:
 
 ```php
 public function __invoke(
@@ -37,17 +37,17 @@ public function __invoke(
 }
 ```
 
-Если PSR-7 request отсутствует, resolution всегда завершается ошибкой. Если request есть, но authenticated identity отсутствует, nullable-параметр получает `null`, обязательный параметр — явную ошибку. Неверный тип request attribute отклоняется fail-closed.
+Если запрос PSR-7 отсутствует, разрешение параметра завершается ошибкой. Если запрос есть, но пользователь не установлен, параметр, допускающий `null`, получает `null`; для обязательного параметра выбрасывается исключение. Неверный тип атрибута запроса также вызывает ошибку.
 
-## Invocation-only семантика
+## Ограничение областью вызова
 
-`CurrentUser` регистрируется через DI v5 `AttributeDefinition` с `AuthoritativeValueProvider` и `InvocationOnlyValueProvider`.
+`CurrentUser` регистрируется через `AttributeDefinition` в DI 6 с `AuthoritativeValueProvider` и `InvocationOnlyValueProvider`.
 
-Параметры caller не могут подменить authenticated identity, а constructor injection запрещён. Текущее состояние аутентификации относится только к одному callable invocation и не должно сохраняться в объекте, переживающем request.
+Явно переданные аргументы не могут подменить пользователя из запроса. Применять атрибут к параметрам конструктора запрещено: текущее состояние аутентификации относится к одному вызову и не должно сохраняться в объекте, который может обслуживать следующие запросы.
 
 ## Интеграция с сессиями
 
-Session-specific состояние предоставляет отдельный пакет `componenta/auth-session-app`:
+Текущую сессию предоставляет отдельный пакет `componenta/auth-session-app`:
 
 ```php
 public function __invoke(
@@ -58,7 +58,7 @@ public function __invoke(
 }
 ```
 
-Сам `auth-app` не зависит от authentication-session contracts.
+Сам `auth-app` не зависит от контрактов сессии аутентификации.
 
 ## Разработка
 

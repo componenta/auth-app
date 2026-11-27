@@ -1,38 +1,44 @@
-# Config 4 and DI 6 compatibility verification
+# Config 4 and DI 6 compatibility
 
-This branch is a compatibility candidate; it must not be tagged or merged as a verified release until both dependency combinations pass the existing public-contract suite.
+This package uses the Auth 4 dependency generation: Config 4 and DI 6.
+PHP 8.5.13 or newer is required by DI 6 and is declared directly by this
+package. The former Config 3 / DI 5 combination is outside this release line.
 
-## Intended compatibility
+## Public behavior
 
-| Runtime | Config | DI |
-| --- | --- | --- |
-| PHP 8.4+ | 3.x | 5.x |
-| PHP 8.5.13+ | 4.x | 6.x |
+The current PSR-7 request supplies the authenticated identity for each callable
+invocation. The existing parameter-handler contract and
+`getAttributeDefinitions()` provider extension point work with Config 4
+and DI 6; no replacement resolver or compatibility shim is needed.
 
-Config 4 and DI 5 cannot be installed together with the currently published DI 5 constraints. DI 6 currently requires Config 4 and PHP ^8.5.13. Keep the existing PHP ^8.4 constraint for the DI 5 combination; Composer enforces the stricter platform requirement for DI 6.
+The contract suite verifies request-only sourcing, authoritative argument
+precedence, missing or malformed request state, nullable and required
+targets, constructor rejection, and reuse across separate requests.
 
-The current provider uses the protected `getAttributeDefinitions()` extension point and the public DI parameter attribute handler contract. Static inspection of Config 4.0.0 (4685e71d86500a7b51f4a773bb3022dd787fba7f) and DI main (e203077d12048936f078d37d1cf3badd661e1716) found these used signatures and capability names retained, so no production resolver changes are proposed at this stage. Static compatibility is not proof of runtime behavior.
+## Verified dependency sources
 
-## Release gates
+- Config 4.0.0: `4685e71d86500a7b51f4a773bb3022dd787fba7f`.
+- DI 6 candidate: `e4f19ab9a9f6bd18da85fc52c8d478433a32baec`.
+- Identity 1.1.1 candidate: `3feb94e0d64956ecdf7b22abed4a8bd9f597abeb`.
 
-- DI 6 must have an installable stable release; the released Identity dependency must admit Config 4. Identity v1.1.0 still requires Config ^3.0.
-- Run the complete existing suite with each dependency combination, including the provider and tests/CurrentUserAttributeTest.php tests. Verify trusted request sourcing, authoritative argument precedence, missing/invalid request behavior, nullable and required targets, constructor prohibition, and absence of state retained between invocations.
-- Resolve the coordinated Auth dependency versions as part of the release preparation; do not use an unbounded development dependency or pretend a development branch is a published version.
+The contract suite passed with these real sources on PHP 8.5.13:
+11 tests and 22 assertions. Candidate versions were supplied by
+Composer path repositories in the integration test project. These labels
+describe the intended releases; they do not assert that tags already exist.
+The package manifest keeps normal SemVer requirements and stable minimum
+stability. An installation from published packages requires the corresponding
+dependency releases first.
 
-Run in separate clean checkouts with the relevant real PHP runtime, after compatible releases exist:
+## Checks
+
+After the prerequisite versions are available:
 
 ```sh
 composer validate --strict
-composer update --with 'componenta/config:^3.0' --with 'componenta/di:^5.0' --no-interaction
+composer update --no-interaction
 composer check
 composer audit --no-interaction
 ```
 
-```sh
-composer validate --strict
-composer update --with 'componenta/config:^4.0' --with 'componenta/di:^6.0' --no-interaction
-composer check
-composer audit --no-interaction
-```
-
-The wider Composer ranges are intentional candidates. No change to CurrentUser's public API, security policy, or existing tests is needed based on the inspected contracts. Do not weaken the tests to make the migration pass. Both runtime matrices are pending; the existing audit branches remain unchanged.
+The complete coordinated graph and the source revisions are recorded in
+[the Auth dependency audit](https://github.com/componenta/auth/blob/fix/auth-dependency-audit-2026-11-27/docs/AUTH-DEPENDENCY-AUDIT-2026-11-27.md).

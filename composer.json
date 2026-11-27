@@ -1,14 +1,14 @@
 {
     "name": "componenta/auth-app",
-    "description": "Authentication context integration for Componenta DI v5",
+    "description": "Authentication context integration for Componenta DI",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "^8.4",
-        "componenta/auth": "^3.0",
-        "componenta/config": "^3.0 || ^4.0",
-        "componenta/di": "^5.0 || ^6.0",
-        "componenta/identity": "^1.0.1",
+        "php": "^8.5.13",
+        "componenta/auth": "^4.0.0",
+        "componenta/config": "^4.0.0",
+        "componenta/di": "^6.0.0",
+        "componenta/identity": "^1.1.1",
         "psr/http-message": "^2.0"
     },
     "require-dev": {
@@ -35,7 +35,8 @@
             ]
         },
         "branch-alias": {
-            "dev-auth-3": "2.0.x-dev"
+            "dev-auth-3": "2.0.x-dev",
+            "dev-fix/auth-dependency-audit-2026-11-27": "3.0.x-dev"
         }
     },
     "config": {
